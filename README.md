@@ -1,9 +1,11 @@
 # control-examples
 Control examples
 
-Dependencies:
+# Dependencies:
 gym for now, installation:
+```
 $ pip install gym
-
-Cart-Pole:
+```
+# Environments:
+## Cart-Pole:
 Swing a pole to the top!
