@@ -9,17 +9,15 @@ class CartPoleSwingUpEnv(CartPoleEnv):
     Description:
         A pole is attached by an un-actuated joint to a cart, which moves along
         a frictionless track. The pendulum starts on the bottom, and the goal is to
-        prevent it from falling over by increasing and reducing the cart's
-        velocity.
+        swing it to the top
     Source:
-        This environment corresponds to the version of the cart-pole problem
-        described by Barto, Sutton, and Anderson
+        This environment corresponds to the cart-pole swingup control problem
     Observation:
         Type: Box(4)
         Num     Observation               Min                     Max
         0       Cart Position             -4.8                    4.8
         1       Cart Velocity             -Inf                    Inf
-        2       Pole Angle                -Inf                       Inf
+        2       Pole Angle                -Inf                    Inf
         3       Pole Angular Velocity     -Inf                    Inf
     Actions:
         Type: Box(1)
@@ -34,8 +32,29 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         the display).
         Episode length is greater than 200.
     """
-    def __init__(self):
+    def __init__(self, gravity=9.81, masscart=1.0, 
+                    masspole=1.0, length=0.5, 
+                    force_mag=10.0, tau=0.02, 
+                    kinematics_integrator='euler'):
         super().__init__()
+
+        assert masscart > 0.
+        assert masspole > 0.
+        assert length > 0.
+        assert force_mag > 0.
+        assert tau > 0.
+        assert kinematics_integrator in ['euler', 'semi-implicit-euler']
+
+        self.gravity = gravity
+        self.masscart = masscart
+        self.masspole = masspole
+        self.total_mass = (self.masspole + self.masscart)
+        self.length = length # actually half the pole's length
+        self.polemass_length = (self.masspole * self.length)
+        self.force_mag = force_mag
+        self.tau = tau  # seconds between state updates
+        self.kinematics_integrator = kinematics_integrator
+
         self.theta_threshold_radians = np.finfo(np.float32).max
         high = np.array([self.x_threshold * 2,
                  np.finfo(np.float32).max,
@@ -45,6 +64,14 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         self.action_space = spaces.Box(-np.finfo(np.float32).max, np.finfo(np.float32).max, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
+    def reset(self):
+        super().reset()
+        possible_init_angles = [self.np_random.uniform(low=np.pi-0.05, high=np.pi, size=(1,)),
+                                self.np_random.uniform(low=-np.pi, high=-np.pi+0.05, size=(1,))]
+        self.state[2] = possible_init_angles[np.random.choice(2)]
+        return np.array(self.state)
+
+    # get_force maps action to forces constrained by the force limit 
     def get_force(self, action):
         return min(action, self.force_mag) if action > 0.0 else max(action, -self.force_mag)
 
@@ -76,32 +103,33 @@ class CartPoleSwingUpEnv(CartPoleEnv):
 
         self.state = (x, x_dot, theta, theta_dot)
 
-        done = bool(
-            x < -self.x_threshold
-            or x > self.x_threshold
-        )
+        done = False
 
         if not done:
-            if abs(theta - 0.0) < 0.01:
+            if abs(theta - 0.0) < 0.01 and abs(theta_dot - 0.0) < 0.01:
                 reward = 0.0
+            elif bool(x < -self.x_threshold or x > self.x_threshold):
+                reward = -10.
+                done = True
+                if self.steps_beyond_done is None:
+                    self.steps_beyond_done = 0
+                elif self.steps_beyond_done == 0:
+                    logger.warn(
+                        "You are calling 'step()' even though this "
+                        "environment has already returned done = True. You "
+                        "should always call 'reset()' once you receive 'done = "
+                        "True' -- any further steps are undefined behavior."
+                    )
+                    self.steps_beyond_done += 1
+                    reward = 0.0
             else:
                 reward = -1.0
         elif self.steps_beyond_done is None:
             # Cart just went out of bounds
             self.steps_beyond_done = 0
             reward = -1.0
-        else:
-            if self.steps_beyond_done == 0:
-                logger.warn(
-                    "You are calling 'step()' even though this "
-                    "environment has already returned done = True. You "
-                    "should always call 'reset()' once you receive 'done = "
-                    "True' -- any further steps are undefined behavior."
-                )
-            self.steps_beyond_done += 1
-            reward = 0.0
 
-        return np.array(self.state), reward, done, {}
+        return self.state, reward, done, {}
 
 class CartPoleSwingUpDiscreteEnv(CartPoleSwingUpEnv):
     def __init__(self):
