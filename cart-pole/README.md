@@ -1,0 +1,1 @@
+OpenAI Gym environment for the Cart-Pole, modified for swing-up control with continuous action spaces

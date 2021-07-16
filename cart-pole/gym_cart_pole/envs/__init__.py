@@ -1,0 +1,2 @@
+from gym_cart_pole.envs.cartpole_swingup import CartPoleSwingUpEnv
+from gym_cart_pole.envs.cartpole_swingup import CartPoleSwingUpDiscreteEnv
