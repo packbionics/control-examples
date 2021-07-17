@@ -33,7 +33,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         Episode length is greater than 200.
     """
     def __init__(self, gravity=9.81, masscart=1.0, 
-                    masspole=1.0, length=1, 
+                    masspole=1.0, length=0.5, 
                     force_mag=20.0, tau=0.01, 
                     kinematics_integrator='euler'):
         super().__init__()
@@ -45,7 +45,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         assert tau > 0.
         assert kinematics_integrator in ['euler', 'semi-implicit-euler']
 
-        self.x_threshold = 5.0
+        self.x_threshold = 2.4
         self.gravity = gravity
         self.masscart = masscart
         self.masspole = masspole
