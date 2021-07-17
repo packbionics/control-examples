@@ -34,7 +34,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
     """
     def __init__(self, gravity=9.81, masscart=1.0, 
                     masspole=1.0, length=0.5, 
-                    force_mag=10.0, tau=0.02, 
+                    force_mag=10.0, tau=0.01, 
                     kinematics_integrator='euler'):
         super().__init__()
 
@@ -45,11 +45,12 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         assert tau > 0.
         assert kinematics_integrator in ['euler', 'semi-implicit-euler']
 
+        self.x_threshold = 5.0
         self.gravity = gravity
         self.masscart = masscart
         self.masspole = masspole
         self.total_mass = (self.masspole + self.masscart)
-        self.length = length # actually half the pole's length
+        self.length = length # actually half the pole's length (location of center-of-mass)
         self.polemass_length = (self.masspole * self.length)
         self.force_mag = force_mag
         self.tau = tau  # seconds between state updates
@@ -66,14 +67,16 @@ class CartPoleSwingUpEnv(CartPoleEnv):
 
     def reset(self):
         super().reset()
-        possible_init_angles = [self.np_random.uniform(low=np.pi-0.05, high=np.pi, size=(1,)),
-                                self.np_random.uniform(low=-np.pi, high=-np.pi+0.05, size=(1,))]
-        self.state[2] = possible_init_angles[np.random.choice(2)]
+        #possible_init_angles = [self.np_random.uniform(low=np.pi-1, high=np.pi, size=(1,)),
+        #                        self.np_random.uniform(low=-np.pi, high=-np.pi+1, size=(1,))]
+        #self.state[2] = possible_init_angles[np.random.choice(2)]
+        #self.state[2] = self.np_random.uniform(low=3*np.pi/4, high=4*np.pi/5, size=(1,))
+        self.state[2] = np.pi
         return np.array(self.state)
 
     # get_force maps action to forces constrained by the force limit 
     def get_force(self, action):
-        return min(action, self.force_mag) if action > 0.0 else max(action, -self.force_mag)
+        return max(min(action, [self.force_mag]),[0.]) if action > 0.0 else min(max(action, [-self.force_mag]),[-0.])
 
     def step(self, action):
         err_msg = "%r (%s) invalid" % (action, type(action))
@@ -89,6 +92,8 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         temp = (force + self.polemass_length * theta_dot ** 2 * sintheta) / self.total_mass
         thetaacc = (self.gravity * sintheta - costheta * temp) / (self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass))
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
+
+
 
         if self.kinematics_integrator == 'euler':
             x = x + self.tau * x_dot
@@ -106,7 +111,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         done = False
 
         if not done:
-            if abs(theta - 0.0) < 0.01 and abs(theta_dot - 0.0) < 0.01:
+            if abs(theta - 0.0) < 0.001 and abs(theta_dot - 0.0) < 0.001:
                 reward = 0.0
             elif bool(x < -self.x_threshold or x > self.x_threshold):
                 reward = -10.
