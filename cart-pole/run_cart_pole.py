@@ -13,6 +13,12 @@ def update_line(new_data):
     plt.xlim((0,2000))
     plt.pause(0.000001)
 
+def theta_distance(theta, target):
+    return target - (theta%(2*np.pi))
+
+"""
+state_modifier changes theta origin to be on the botton
+"""
 def state_modifier(state):
     return (state[0], state[1], np.pi-state[2], -state[3])
 
@@ -32,7 +38,7 @@ def energy(env, state):
 
     return E
 
-def swingup(t, env, state, ke=0.05, kx=[0.2,1]):
+def swingup(t, env, state, ke=0.1, kx=[0.5,0.5]):
     Ed = env.masspole*env.gravity*env.length*2
     E = energy(env, state)
     Ediff = E - Ed
@@ -52,13 +58,19 @@ def swingup(t, env, state, ke=0.05, kx=[0.2,1]):
     print('Target force: {}'.format(f))
     return f
 
-def upright(t,env,state,kth=[5,100], kx=[10,10]):
+def upright(t,env,state,kth=[40,40], kx=[0.1,0.1]):
     c = np.cos(state[2])
     s = np.sin(state[2])
     t = np.tan(state[2])
-    theta_diff = (state[2] % np.pi)
+    theta_diff = theta_distance(state[2],np.pi)
+    print('--thetas--')
+    print('theta: {}'.format(state[2]*180/np.pi))
+    print('diff: {}'.format(theta_diff*180/np.pi))
+
     acceleration = kth[0]*theta_diff - kth[1]*state[3] - kx[0]*state[0] - kx[1]*state[1]
-    f = (c-2/c)*acceleration - 2*t - state[3]**2*s
+    f = (c-2/c)*acceleration - 2*t - state[3]**2*s 
+    print('Target acceleration: {}'.format(acceleration))
+    print('Target force: {}'.format(f))
     return f
 
 env = gym.make('gym_cart_pole:CartPoleSwingUpContinuous-v0')
@@ -66,23 +78,22 @@ env.reset()
 action = None
 state = None
 t = 0
-switch = False
-for _ in range(10000):
+
+for _ in range(100000):
     if state is None:
         action = env.action_space.sample()
     else:
-        if (abs(state[2]%(2*np.pi))<0.01) or switch:
-            action = upright(t,env,state_modifier(state))
-            switch = True
+        state = state_modifier(state)
+        if (abs(theta_distance(state[2],np.pi)) < 0.4):
+            action = upright(t,env,state)
         else:
-            action = swingup(t,env,state_modifier(state))
+            action = swingup(t,env,state)
     for _ in range(1):
         env.render()
         state, reward, done, _ = env.step(action) 
         if done:
             env.reset()
             t = 0
-            switch = False
             action = np.zeros((1,))
             break
         t += 1
