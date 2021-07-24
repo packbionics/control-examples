@@ -34,7 +34,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
     """
     def __init__(self, gravity=9.81, masscart=1.0, 
                     masspole=1.0, length=0.5, 
-                    force_mag=20.0, tau=0.01, 
+                    force_mag=20.0, tau=0.02, 
                     kinematics_integrator='euler'):
         super().__init__()
 
