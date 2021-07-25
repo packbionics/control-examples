@@ -70,8 +70,8 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         #possible_init_angles = [self.np_random.uniform(low=np.pi-1, high=np.pi, size=(1,)),
         #                        self.np_random.uniform(low=-np.pi, high=-np.pi+1, size=(1,))]
         #self.state[2] = possible_init_angles[np.random.choice(2)]
-        #self.state[2] = self.np_random.uniform(low=3*np.pi/4, high=4*np.pi/5, size=(1,))
-        self.state[2] = np.pi
+        self.state[2] = self.np_random.uniform(low=np.pi/2, high=9*np.pi/10, size=(1,))
+
         return np.array(self.state)
 
     # get_force maps action to forces constrained by the force limit 
