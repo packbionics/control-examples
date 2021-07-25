@@ -55,7 +55,9 @@ def swingup(t, env, state, ke=0.2, kx=[0.5,0.2]):
     
     acceleration = ke*state[3]*c*Ediff - kx[0]*state[0] - kx[1]*state[1]
 
-    f = (masspole+masscart)*acceleration + masspole*length*(-acceleration*c/length-g*s/length)*c - masspole*length*state[3]**2*s
+    f = ((masspole+masscart)*acceleration + 
+            masspole*length*(-acceleration*c/length-g*s/length)*c - 
+            masspole*length*state[3]**2*s)
     '''
     print('--control--')
     print('Ediff: {}'.format(Ediff))
@@ -66,7 +68,15 @@ def swingup(t, env, state, ke=0.2, kx=[0.5,0.2]):
     '''
     return f
 
-def upright(t,env,state,kth=[50,20], kx=[0.01,0.01]):
+def upright_lqr(t,state):
+    K = np.array([-4,58,-6,10])
+    theta_diff = theta_distance(state[2],np.pi)
+    X = np.array([state[0], -theta_diff, state[1], state[3]])
+    f =  np.dot(K,X)
+
+    return -f
+
+def upright(t,state,kth=[50,20], kx=[0.01,0.01]):
     c = np.cos(state[2])
     s = np.sin(state[2])
     t = np.tan(state[2])
@@ -82,7 +92,7 @@ def upright(t,env,state,kth=[50,20], kx=[0.01,0.01]):
     return f
 
 env = gym.make('gym_cart_pole:CartPoleSwingUpContinuous-v0')
-env.reset()
+env.reset() 
 action = None
 state = None
 t = 0
@@ -92,8 +102,8 @@ for _ in range(10000):
         action = env.action_space.sample()
     else:
         state = state_modifier(state)
-        if (abs(theta_distance(state[2],np.pi)) < 0.3):
-            action = upright(t,env,state)
+        if (abs(theta_distance(state[2],np.pi)) < 0.2):
+            action = upright_lqr(t,state)
         else:
             action = swingup(t,env,state)
     for _ in range(1):
