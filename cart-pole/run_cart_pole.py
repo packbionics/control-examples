@@ -48,12 +48,10 @@ def energy(env, state):
     state   State vector of system
     """
     g = env.gravity
-    masscart = env.masscart
     masspole = env.masspole
     length = env.length
 
     x = state[0]
-    x_dot = state[1]
     theta = state[2]
     theta_dot = state[3]
 
@@ -62,7 +60,7 @@ def energy(env, state):
 
     return E
 
-def swingup(time, env, state, ke=0.5, kx=[5,1], plot=False):
+def swingup(time, env, state, ke=0.5, kx=[5,5], plot=False):
     """
     Cart-pole energy shaping control
 
@@ -92,7 +90,7 @@ def swingup(time, env, state, ke=0.5, kx=[5,1], plot=False):
     acceleration = ke*state[3]*c*Ediff - kx[0]*state[0] - kx[1]*state[1]
 
     f = ((masspole+masscart)*acceleration + 
-            masspole*length*(-acceleration*c/length-g*s/length)*c - 
+            masspole*(-acceleration*c-g*s)*c - 
             masspole*length*state[3]**2*s)
     return f
 
@@ -107,7 +105,7 @@ def upright_lqr(K,state):
     
     theta_diff = theta_distance(state[2],np.pi)
     X = np.array([state[0], theta_diff, state[1], state[3]])
-    f =  np.dot(K,X)
+    f = np.dot(K,X)
 
     return -f
 
@@ -149,7 +147,7 @@ for _ in range(10000):
         action = env.action_space.sample()
     else:
         state = state_modifier(state)
-        if (abs(theta_distance(state[2],np.pi)) < 0.4):
+        if (abs(theta_distance(state[2],np.pi)) < .4):
             action = upright_lqr(K,state)
         else:
             action = swingup(t,env,state)
