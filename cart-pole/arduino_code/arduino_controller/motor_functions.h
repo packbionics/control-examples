@@ -11,6 +11,11 @@ double kx_D = 5; // Position D gain
 
 double K[4] = {1, 1, 1, 1}; // LQR controller gains, determined by MATLAB
 
+double stepAngle = 1.8;
+double tPulse = 3.4e-6;
+double deltat = 0.01;
+double currentVelocity = 0;
+
 struct State {
   double x;
   double x_dot;
