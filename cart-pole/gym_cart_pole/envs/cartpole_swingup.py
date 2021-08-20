@@ -34,7 +34,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
     """
     def __init__(self, gravity=9.81, masscart=1.0, 
                     masspole=1.0, length=0.5, 
-                    force_mag=10.0, tau=0.01, 
+                    force_mag=25.0, tau=0.015, 
                     kinematics_integrator='euler'):
         super().__init__()
 
@@ -99,7 +99,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
             x = x + self.tau * x_dot
             x_dot = x_dot + self.tau * xacc
             theta = theta + self.tau * theta_dot
-            theta_dot = theta_dot + self.tau * thetaacc
+            theta_dot = theta_dot + self.tau * thetaacc - 0.01*theta_dot
         else:  # semi-implicit euler
             x_dot = x_dot + self.tau * xacc
             x = x + self.tau * x_dot
