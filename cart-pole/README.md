@@ -1,10 +1,16 @@
 # cart-pole
 
-OpenAI Gym environment for the Cart-Pole, modified for swing-up control with continuous/discrete action spaces
+Exploration of controlling cart-pole system. Uses "energy shaping" swingup controller, 
+LQR for balancing.
+
+Contains modified cart-pole gym environment for testing controller in simulation.
+Arduino code used to control real hardware.
 
 ## Installation
 ```
-$ pip install .
+$ pip install -e .
 ```
 ## Run
-An example is provided in run_cart_pole.py
+```run_cart_pole.py``` starts up a cart-pole swingup simulation with energy shaping controller + LQR
+
+```manual_cart_pole.py``` utilizes a brain-powered controller
