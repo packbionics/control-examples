@@ -11,11 +11,15 @@ action = None
 state = None
 current_force = 0
 pygame.init()
+screen = pygame.display.set_mode((640, 480), 0, 32)
+pygame.event.set_grab(True)
 
 # LQR gains
 K = np.array([-4.47,70,-6,10.45])
 
 def get_key_press():
+    pygame.event.pump()
+    print(pygame.key.get_focused())
     force_out = 0.
     key_input = pygame.key.get_pressed()
 
@@ -24,7 +28,7 @@ def get_key_press():
     if key_input[pygame.K_RIGHT]:
         force_out = 15
     if key_input[pygame.K_SPACE]:
-        force_out =  .999
+        force_out = .999
     if key_input[pygame.K_RETURN]:
         sys.exit()
 
@@ -41,6 +45,7 @@ for _ in range(1000000):
         action = env.action_space.sample()
     else:
         state = state_modifier(state)
+
         if (abs(theta_distance(state[2],np.pi)) < 0.5):
             if get_key_press() != .999:
                 action = upright_lqr(K,state)
