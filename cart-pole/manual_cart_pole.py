@@ -19,7 +19,6 @@ K = np.array([-4.47,70,-6,10.45])
 
 def get_key_press():
     pygame.event.pump()
-    print(pygame.key.get_focused())
     force_out = 0.
     key_input = pygame.key.get_pressed()
 

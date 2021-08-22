@@ -57,7 +57,7 @@ def energy(env, state):
 
     return E
 
-def swingup(time, env, state, ke=0.5, kx=[5,5], plot=False):
+def swingup(time, env, state, ke=1, kx=[5,5], plot=False):
     """
     Cart-pole energy shaping control
 

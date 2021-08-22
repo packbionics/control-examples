@@ -21,7 +21,7 @@ Simulation loop
 Choose action based on state,
 Completes action and returns new state
 """
-for _ in range(10000):
+for _ in range(100000):
     if state is None:
         action = env.action_space.sample()
     else:

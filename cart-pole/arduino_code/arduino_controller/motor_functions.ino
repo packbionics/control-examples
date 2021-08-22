@@ -20,53 +20,97 @@ void moveStepper(int speedInput) {
 }
 
 /**
+ * Moves to desired location at a nominal speed
+ */
+void moveTo( State *state, double x) {
+
+  if (abs(state->x - x) < 0.02) {
+    return;
+  }
+  
+  if (state->x < x) {
+    while (state->x < x) {
+      driveMotor(state, defaultSpeed);
+    }
+  }
+  else if (state->x > x) {
+    while (state->x > x) {
+      driveMotor(state, -1.0 * defaultSpeed);
+    }
+  }
+  state->x_dot = 0.0;
+}
+
+/**
  * Drives motor to desired speed given angular velocity.
  */
-void driveMotor( double phiDot ) 
+void driveMotor( State *state, double phiDot ) 
 {
 
   //no movement check
   if( abs( phiDot ) < 0.01 ) {
     return;
   }
-  
-  double pulseRate = phiDot * 180 / stepAngle / M_1_PI;
-  double motorDelay = 1 / pulseRate - tPulse;
-  
-  //clockwise
-  if( phiDot > 0 ) {
-    digitalWrite(dirPin, HIGH);
-    digitalWrite(stepPin,HIGH); 
-    digitalWrite(stepPin,LOW); 
-    delayMicroseconds(motorDelay); 
+
+  if (phiDot > 35) {
+    phiDot = 35;
   }
-  else if( phiDot < 0 ) {
+  if (phiDot < -35) {
+    phiDot = -35;
+  }
+  
+  double pulseRate = (abs(phiDot) * 180) / (stepAngle * M_PI);
+  double motorDelay = 1 / pulseRate - tPulse;
+
+  Serial.print("x:");
+  Serial.print(state->x);
+  Serial.print("\n");
+
+  double dx;
+  double dt = tPulse + motorDelay;
+
+  // Clockwise
+  if (phiDot > 0) {
+    digitalWrite(dirPin, HIGH);
+    dx = (stepAngle / 360.0) * gearRadius * M_PI * 2.0;
+  }
+  // Counterclockwise
+  else {
     digitalWrite(dirPin, LOW);
-    digitalWrite(stepPin,HIGH); 
-    digitalWrite(stepPin,LOW); 
-    delayMicroseconds(motorDelay); 
-  } 
+    dx = - (stepAngle / 360.0) * gearRadius * M_PI * 2.0;
+  }
+
+  state->x_dot = dx / dt;
+
+  for (int i=0; i<10; i++) {
+      digitalWrite(stepPin,HIGH); 
+      delayMicroseconds(1e6*motorDelay/2); 
+      state->x = state->x + dx;
+      digitalWrite(stepPin,LOW); 
+      delayMicroseconds(1e6*motorDelay/2); 
+  }
 }
 
 /**
- * Calculates velocity and drives motor to that velocity given current acceleration.
+ * Calculates velocity and drives motor to that velocity given desired acceleration.
  */
-void acheiveAcc( double acc )
+void acheiveAcc( State *state, double acc )
 {
-  double velocity = currentVelocity + acc*deltat;
-  driveMotor(velocity);
+  double targetVelocity = state->x_dot + acc*deltat;
+  double phi_dot = targetVelocity / gearRadius;
+  driveMotor(state, phi_dot);
 }
 
 double theta_distance(double theta, double target) {
-  return (theta%(2*M_1_PI)) - target;
+  return (fmod(theta,  (2*M_PI))) - target;
 }
 
 /**
  * Returns current total energy of pendulum given sytem's state.
  */
 double energy(State state) {
-  double U = -1*masspole*g*lengthPend*cos(state.theta);
-  double K = 0.5*(masspole*sq(lengthPend))*sq(state.theta_dot);
+  double U = -1*massPole*g*lengthPend*cos(state.theta);
+  double K = 0.5*(massPole*sq(lengthPend))*sq(state.theta_dot);
   return U + K;
 }
 
@@ -75,7 +119,7 @@ double energy(State state) {
  */
 double swingup(State state) {
   //desired energy; pendulum at angle pi
-  double Ed = massple*g*lengthPend;
+  double Ed = massPole*g*lengthPend;
   
   double E = energy(state);
   double Ediff = E - Ed;
@@ -89,11 +133,13 @@ double swingup(State state) {
   return acc;
 }
 
-// acc = (f + masspole*lengthPend*state.theta_dot**2*s + g*s*c*masspole) / (masspole+masscart-masspole*sq(c));
+// acc = (f + massPole*lengthPend*state.theta_dot**2*s + g*s*c*massPole) / (massPole+massCart-massPole*sq(c));
 
 double upright_lqr(State state) {
-  double theta_diff = theta_distance(state.theta, M_1_PI);
+  double c = cos(state.theta);
+  double s = sin(state.theta);
+  double theta_diff = theta_distance(state.theta, M_PI);
   double f = K[0]*state.x + K[1]*theta_diff + K[2]*state.x_dot + K[3]*state.theta_dot;
-  double acc = (f + masspole*lengthPend*state.theta_dot**2*s + g*s*c*masspole) / (masspole+masscart-masspole*sq(c));
+  double acc = (f + massPole*lengthPend*sq(state.theta_dot)*s + g*s*c*massPole) / (massPole+massCart-massPole*sq(c));
   return -1 * acc;
 }
