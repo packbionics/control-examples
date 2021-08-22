@@ -10,6 +10,11 @@ const int dirPin = 2;
 
 State state;
 double time;
+
+double prevTheta;
+double deltaTime;
+
+bool firstLoop = true;
  
 void setup() {
 
@@ -34,7 +39,15 @@ void setup() {
   time = millis();
 }
 void loop() {
-  state.theta = encInvPend;
+  if(!firstLoop) {
+    deltaTime = (millis() - time) / 1000.0;
+    time = millis();
+    prevTheta = state.theta;
+    state.theta = encInvPend;
+    
+    state.theta_dot = (state.theta - prevTheta) / deltaTime;
+  }
   double acc = swingup(state);
   acheiveAcc(&state, acc);
+  firstLoop = false;
 }
