@@ -2,13 +2,24 @@
 #include "Sensor_Interrupt.h"
 #include "motor_functions.h"
 
+#define CALIBRATION_INV_PENDULUM
+
 // defines pins numbers
 const int stepPin = 3; 
 const int dirPin = 2; 
 
 State state;
+double time;
  
 void setup() {
+
+  Init_Encoders();
+  
+  #ifdef CALIBRATION_INV_PENDULUM
+    delayMicroseconds(50000);
+    setZeroSPI(ENC_0);
+  #endif
+  
   // Sets the two pins as Outputs
   Serial.begin(9600);
   pinMode(stepPin,OUTPUT); 
@@ -20,9 +31,10 @@ void setup() {
   delay(3000);
   moveTo(&state, CENTER);
   delay(500);
-  
+  time = millis();
 }
 void loop() {
+  state.theta = encInvPend;
   double acc = swingup(state);
   acheiveAcc(&state, acc);
 }
