@@ -2,7 +2,7 @@ const double defaultSpeed = 6*M_PI;
 
 
 const double g = 9.81;
-double massPole = 49 / 1000;
+double massPole = 49.0 / 1000;
 double lengthPend = 0.244;
 double massCart = (80+115+75) / 1000.0;
 double cartWidth = 0.07;
@@ -11,15 +11,17 @@ const double LEFTMOST = -1.0 * trackLength / 2.0 + cartWidth / 2.0;
 const double RIGHTMOST = -1.0 * LEFTMOST;
 const double CENTER = 0.0;
 
-double ke = 0.5; // Energy Gain
-double kx_P = 5; // Position P gain
-double kx_D = 5; // Position D gain
+double ke = 20.0; // Energy Gain
+double kx_P = 1.0; // Position P gain
+double kx_D = 1.0; // Position D gain
 
-double K[4] = {1, 1, 1, 1}; // LQR controller gains, determined by MATLAB
+double K[4] = {-4.4721, 16.1787, -3.5913, 2.6220}; // LQR controller gains, determined by MATLAB
 
 double stepAngle = 1.8;
 double tPulse = 3.4e-6;
-double deltat = 0.005;
+double deltat = 0.001; // Rise time of velocity control
+double tDrive = 0.1; // Velocity control duration
+double minPhiDot = (1/tDrive)*(stepAngle*M_PI)/180;
 double currentVelocity = 0;
 double gearRadius = (12.9/2.0)/1000.0;
 

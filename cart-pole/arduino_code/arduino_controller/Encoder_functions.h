@@ -1,7 +1,7 @@
 /* Include the SPI library for the arduino boards */
 #include <SPI.h>
 
-#ifndef M_2_PI
+#ifndef M_PI
 #include <math.h>
 #endif
 
@@ -22,7 +22,7 @@
 #define RES14           14
 
 /* SPI pins */
-#define ENC_0           9 // encoder at knee
+#define ENC_0           2 // encoder 
 #define SPI_MOSI        11
 #define SPI_MISO        12
 #define SPI_SCLK        13

@@ -56,6 +56,7 @@ uint16_t getPositionSPI(uint8_t encoder, uint8_t resolution)
   else
   {
     currentPosition = 0xFFFF; //bad position
+    Serial.print("---BAD CHECKSUM---\n");
   }
 
   //If the resolution is 12-bits, and wasn't 0xFFFF, then shift position, otherwise do nothing
@@ -139,6 +140,6 @@ void resetAMT22(uint8_t encoder)
 }
 
 double bitToDegrees(int bitCount) {
-  double deg = bitCount / ENC_MAX_BITS * M_2_PI;
+  double deg = (1 - ((double) bitCount / ENC_MAX_BITS)) * 360 * M_PI / 180.0;
   return deg;
 }

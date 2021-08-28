@@ -58,13 +58,13 @@ void driveMotor( State *state, double phiDot )
   if (phiDot < -35) {
     phiDot = -35;
   }
+
+  if (abs(phiDot) < minPhiDot) {
+    phiDot = sgn(phiDot) * minPhiDot;
+  }
   
   double pulseRate = (abs(phiDot) * 180) / (stepAngle * M_PI);
   double motorDelay = 1 / pulseRate - tPulse;
-
-  Serial.print("x:");
-  Serial.print(state->x);
-  Serial.print("\n");
 
   double dx;
   double dt = tPulse + motorDelay;
@@ -82,12 +82,17 @@ void driveMotor( State *state, double phiDot )
 
   state->x_dot = dx / dt;
 
-  for (int i=0; i<10; i++) {
-      digitalWrite(stepPin,HIGH); 
-      delayMicroseconds(1e6*motorDelay/2); 
-      state->x = state->x + dx;
-      digitalWrite(stepPin,LOW); 
-      delayMicroseconds(1e6*motorDelay/2); 
+  int nPulses = floor(tDrive / dt); 
+  
+  for (int i=0; i<nPulses; i++) {
+    digitalWrite(stepPin,HIGH); 
+    delayMicroseconds(1e6*motorDelay/2); 
+    state->x = state->x + dx;
+    digitalWrite(stepPin,LOW); 
+    delayMicroseconds(1e6*motorDelay/2); 
+    if (state->x >= RIGHTMOST || state-> <= LEFTMOST) {
+      break;
+    }
   }
 }
 
@@ -96,9 +101,14 @@ void driveMotor( State *state, double phiDot )
  */
 void acheiveAcc( State *state, double acc )
 {
-  double targetVelocity = state->x_dot + acc*deltat;
+  double acc_t = millis();
+  double targetVelocity = state->x_dot + acc*(deltat + tDrive);
   double phi_dot = targetVelocity / gearRadius;
   driveMotor(state, phi_dot);
+  Serial.print("ACCTIME\n");
+  double deltaTime = (millis() - acc_t) / 1000.0;
+  Serial.print(deltaTime);
+  Serial.print("\n");
 }
 
 double theta_distance(double theta, double target) {
@@ -119,6 +129,7 @@ double energy(State state) {
  */
 double swingup(State state) {
   //desired energy; pendulum at angle pi
+
   double Ed = massPole*g*lengthPend;
   
   double E = energy(state);
@@ -129,7 +140,7 @@ double swingup(State state) {
   double t = tan(state.theta);
 
   double acc = ke*state.theta_dot*c*Ediff - kx_P*state.x - kx_D*state.x_dot;
-
+  
   return acc;
 }
 
