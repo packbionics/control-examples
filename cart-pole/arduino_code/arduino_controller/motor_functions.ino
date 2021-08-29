@@ -60,7 +60,14 @@ void driveMotor( State *state, double phiDot )
   }
 
   if (abs(phiDot) < minPhiDot) {
-    phiDot = sgn(phiDot) * minPhiDot;
+    int sign;
+    if (phiDot < 0) {
+      sign = -1;
+    }
+    else {
+      sign = 1;
+    }
+    phiDot = sign * phiDot * minPhiDot;
   }
   
   double pulseRate = (abs(phiDot) * 180) / (stepAngle * M_PI);
@@ -90,7 +97,7 @@ void driveMotor( State *state, double phiDot )
     state->x = state->x + dx;
     digitalWrite(stepPin,LOW); 
     delayMicroseconds(1e6*motorDelay/2); 
-    if (state->x >= RIGHTMOST || state-> <= LEFTMOST) {
+    if (state->x >= RIGHTMOST || state->x <= LEFTMOST) {
       break;
     }
   }
