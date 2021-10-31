@@ -1,127 +1,240 @@
-import gym
-import numpy as np
+import math
+import time
+
 import matplotlib.pyplot as plt
+import numpy as np
+from gekko import GEKKO as gk
+
+p, = plt.plot([],[], 'r-')
 
 def update_line(new_data):
-    """
-    Plot real-time data 
-    """
-    p.set_xdata(np.append(p.get_xdata(), new_data[0]))
-    p.set_ydata(np.append(p.get_ydata(), new_data[1]))
+    p.set_xdata(new_data[0])
+    p.set_ydata(new_data[1])
     plt.draw()
-    plt.ylim((-20,5))
-    plt.xlim((0,2000))
+    plt.ylim((-1,5))
+    plt.xlim((0,1))
     plt.pause(0.000001)
 
-def theta_distance(theta, target):
-    """
-    Computes X-X*, where X* is the target angle
-    Wraps angle every 2pi to get measured difference
+class CartPoleSwingUpController:
 
-    Keyword arguments:
-    theta   current angle (-inf,inf)
-    target  target angle
-    """
-    return (theta%(2*np.pi)) - target
+    def __init__(self, gravity=9.81, 
+                mass_cart=1, 
+                mass_pole=1, 
+                length_pole=0.5, 
+                k_lqr=np.array([-4.47,80,-6,10.45])):
+        self.state = np.zeros((4,1))
+        self.k_lqr = k_lqr
+        self.gravity = gravity
+        self.mass_cart = mass_cart
+        self.mass_pole = mass_pole
+        self.length_pole = length_pole
 
+    def state_modifier(self, state):
+        """
+        Changes theta origin to be on the bottom
+            to accomodate different derivations
+        Keyword arguments:
+        state   State vector of system
+        """
+        return (state[0], state[1], np.pi-state[2], -state[3])
 
-def state_modifier(state):
-    """
-    Changes theta origin to be on the bottom
-        to accomodate different derivations
+    def unpack_parameters(self):
+        return (self.gravity,
+                self.mass_pole,
+                self.mass_cart,
+                self.length_pole,
+                self.k_lqr)
 
-    Keyword arguments:
-    state   State vector of system
-    """
-    return (state[0], state[1], np.pi-state[2], -state[3])
+    def state_estimate_callback(self, state):
+        state = self.state_modifier(state)
+        self.state[0] = state[0]
+        self.state[1] = state[1]
+        self.state[2] = state[2]        
+        self.state[3] = state[3]
+        return state
 
-def energy(env, state):
-    """
-    Total energy of pendulum
-    Assumes the pendulum is a point mass attached by light rod
+    def get_action(self):
+        if (abs(self.theta_distance(self.state[2],math.pi)) < .3):
+            return self.upright_lqr()
+        else:
+            return self.swingup()
 
-    Keyword arguments:
-    env     Environment reference
-    state   State vector of system
-    """
-    g = env.gravity
-    masspole = env.masspole
-    length = env.length
+    def theta_distance(self, theta, target):
+        """
+        Compute the signed angle difference between theta and target
+        """
+        return math.atan2(math.sin(theta-target), math.cos(theta-target))
 
-    x = state[0]
-    theta = state[2]
-    theta_dot = state[3]
-
-    U = -masspole*g*length*np.cos(theta)
-    E = 0.5*(masspole*(length**2))*theta_dot**2 + U
-
-    return E
-
-def swingup(time, env, state, ke=1, kx=[5,5], plot=False):
-    """
-    Cart-pole energy shaping control
-
-    Keyword arguments:
-    time    time of system
-    env     Environment reference
-    state   State vector of system
-    ke      Energy gain
-    kx      Position PD gain
-    plot    Plot energy of pendulum
-    """
-
-    g = env.gravity
-    masscart = env.masscart
-    masspole = env.masspole
-    length = env.length
-
-    Ed = masspole*g*length
-    E = energy(env, state)
-    Ediff = E - Ed
-    if plot:
-        update_line(np.array([time,Ediff]))
-    c = np.cos(state[2])
-    s = np.sin(state[2])
-    t = np.tan(state[2])
+    def upright_lqr(self):
+        """
+        LQR controller
+        """
     
-    acceleration = ke*state[3]*c*Ediff - kx[0]*state[0] - kx[1]*state[1]
+        k_lqr = self.k_lqr
 
-    f = ((masspole+masscart)*acceleration + 
-            masspole*(-acceleration*c-g*s)*c - 
-            masspole*length*state[3]**2*s)
-    return f
+        x = self.state[0]
+        x_dot = self.state[1]
+        theta = self.state[2]
+        theta_dot = self.state[3]
 
-def upright_lqr(K,state):
-    """
-    LQR controller
+        theta_diff = self.theta_distance(theta,math.pi)
+        X = np.array([x, theta_diff, x_dot, theta_dot])
+        f = np.dot(k_lqr,X)
+        return -f 
 
-    Keyword arguments:
-    K       LQR controller gains
-    state   State vector of system
-    """
-    
-    theta_diff = theta_distance(state[2],np.pi)
-    X = np.array([state[0], theta_diff, state[1], state[3]])
-    f = np.dot(K,X)
+class CartPoleMPCController(CartPoleSwingUpController):
 
-    return -f
+    def __init__(self, gravity=9.81, 
+                mass_cart=1, 
+                mass_pole=1, 
+                length_pole=0.5, 
+                k_lqr=np.array([-4.47,80,-6,10.45])):
 
-def upright(state,kth=[50,20], kx=[0.01,0.01]):
-    """
-    Non-collocated control of pole in upright position
+        super().__init__(gravity, 
+                mass_cart, 
+                mass_pole, 
+                length_pole,
+                k_lqr)
+        self.m = gk(remote=False)
+        N = 15
+        T = 1
+        self.m.time = np.linspace(0,T,N)
 
-    Keyword arguments:
-    state   State vector of system
-    kth     Angle PD gains
-    kx      Position PD gains
-    """
-    c = np.cos(state[2])
-    s = np.sin(state[2])
-    t = np.tan(state[2])
-    theta_diff = theta_distance(state[2],np.pi)
+        m1 = self.mass_cart
+        m2 = self.mass_pole
+        l = self.length_pole
+        g = self.gravity
+        x_0 = [0.0,0.0,0.0,0.0]
+        x_f = [0.5, math.pi, 0.0, 0.0]
 
-    acceleration = -kth[0]*theta_diff - kth[1]*state[3] - kx[0]*state[0] - kx[1]*state[1]
-    f = (c-2/c)*acceleration - 2*t - state[3]**2*s 
+        pos_lb = -1.0
+        pos_ub = 1.0
+        Fmx = 100.0
 
-    return f
+        p = np.zeros(N)
+        p[-1] = T
+        final = self.m.Param(value=p)
+
+        self.x = self.m.Array(self.m.Var,(4))
+
+        self.x[0].lower = pos_lb
+        self.x[0].upper = pos_ub
+
+        for i in range(4):
+            self.x[i].value = x_0[i]
+
+        self.u = self.m.MV(value=0,lb=-Fmx,ub=Fmx)
+        self.u.STATUS = 1
+
+        self.m.Equation(self.x[0].dt() == self.x[2])
+        self.m.Equation(self.x[1].dt() == self.x[3])
+        self.m.Equation(self.x[2].dt() == ((l*m2*self.m.sin(self.x[1])*self.x[3]**2 + g*m2*self.m.cos(self.x[1])*self.m.sin(self.x[1]) + self.u)/
+                                (m1+m2*(1-self.m.cos(self.x[1])**2))))
+        self.m.Equation(self.x[3].dt() == -((l*m2*self.m.cos(self.x[1])*self.m.sin(self.x[1])*self.x[3]**2+self.u*self.m.cos(self.x[1])+(m1+m2)*g*self.m.sin(self.x[1])) /
+                                (l*m1+l*m2*(1-self.m.cos(self.x[1])**2))))
+
+        #self.m.Equation((self.x[1]*final - x_f[1])**2 - 0.1 <= 0) 
+
+        self.m.Minimize(self.m.integral(self.u**2))
+        #self.m.Minimize(1e5*(self.x[0]*final-x_f[0])**2*final)
+        self.m.Minimize(final*1e3*(self.x[1]-x_f[1])**2)
+        #self.m.Minimize(1e5*(self.x[2]*final-x_f[2])**2*final)
+        #self.m.Minimize(1e5*(self.x[3]*final-x_f[3])**2*final)
+
+        self.m.options.IMODE = 6
+
+        self.current_action = 0
+
+    def swingup(self):
+        try:
+            self.x[0].value = self.state[0]
+            self.x[1].value = self.state[2]
+            self.x[2].value = self.state[1]
+            self.x[3].value = self.state[3]
+            self.m.solve()
+        except:
+            print('MPC fail')
+            return np.array([self.current_action])
+
+        update_line(np.array([self.m.time,self.x[1].value]))
+
+        self.current_action = self.u.value[1]
+        print(self.current_action)
+        print(self.x[1].value[-1])
+        return np.array([self.current_action])
+
+class CartPoleEnergyShapingController(CartPoleSwingUpController): 
+
+    def __init__(self, gravity=9.81, 
+                mass_cart=1, 
+                mass_pole=1, 
+                length_pole=0.5, 
+                k_lqr=np.array([-4.47,80,-6,10.45]),
+                k_e=2,
+                k_x=[5,5]):
+
+        super().__init__(gravity, 
+                mass_cart, 
+                mass_pole, 
+                length_pole,
+                k_lqr)
+        self.k_e = k_e
+        self.k_x = k_x
+
+    def unpack_parameters(self):
+        k_e = self.k_e
+        k_x = self.k_x
+
+        return super().unpack_parameters() + (k_e, k_x)
+
+    def energy(self):
+        """
+        Total energy of pendulum
+        Assumes the pendulum is a point mass attached by light rod
+        """
+        (gravity, mass_pole,
+            mass_cart,
+            length_pole,
+            k_lqr,
+            k_e,
+            k_x) = self.unpack_parameters()
+
+        theta = self.state[2]
+        theta_dot = self.state[3]
+
+        U = -mass_pole * gravity * length_pole * math.cos(theta)
+        E = 0.5 * (mass_pole * (length_pole ** 2)) * theta_dot ** 2 + U
+
+        return E
+
+    def swingup(self):
+        """
+        Cart-pole energy shaping control
+        """
+
+        (gravity, mass_pole,
+            mass_cart,
+            length_pole,
+            k_lqr, 
+            k_e,
+            k_x,) = self.unpack_parameters()
+
+        Ed = mass_pole*gravity*length_pole
+        Ediff = self.energy() - Ed
+
+        x = self.state[0]
+        x_dot = self.state[1]
+        theta = self.state[2]
+        theta_dot = self.state[3]
+
+        c = math.cos(theta)
+        s = math.sin(theta)
+        t = math.tan(theta)
+
+        acceleration = k_e * theta_dot * c * Ediff - k_x[0] * x - k_x[1]*x_dot
+
+        f = ((mass_pole+mass_cart)*acceleration + 
+                mass_pole*(-acceleration*c-gravity*s)*c - 
+                mass_pole*length_pole*theta_dot**2*s)
+        return f
 

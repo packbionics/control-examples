@@ -34,7 +34,7 @@ class CartPoleSwingUpEnv(CartPoleEnv):
     """
     def __init__(self, gravity=9.81, masscart=1.0, 
                     masspole=1.0, length=0.5, 
-                    force_mag=25.0, tau=0.015, 
+                    force_mag=100.0, tau=0.015, 
                     kinematics_integrator='euler'):
         super().__init__()
 
@@ -79,8 +79,8 @@ class CartPoleSwingUpEnv(CartPoleEnv):
         return max(min(action, [self.force_mag]),[0.]) if action > 0.0 else min(max(action, [-self.force_mag]),[-0.])
 
     def step(self, action):
-        err_msg = "%r (%s) invalid" % (action, type(action))
-        assert self.action_space.contains(action), err_msg
+        #err_msg = "%r (%s) invalid" % (action, type(action))
+        #assert self.action_space.contains(action), err_msg
 
         x, x_dot, theta, theta_dot = self.state
         force = self.get_force(action)

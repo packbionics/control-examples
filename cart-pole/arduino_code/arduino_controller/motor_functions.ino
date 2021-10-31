@@ -30,12 +30,12 @@ void moveTo( State *state, double x) {
   
   if (state->x < x) {
     while (state->x < x) {
-      driveMotor(state, defaultSpeed);
+      driveMotor(state, defaultSpeed, tDrive);
     }
   }
   else if (state->x > x) {
     while (state->x > x) {
-      driveMotor(state, -1.0 * defaultSpeed);
+      driveMotor(state, -1.0 * defaultSpeed, tDrive);
     }
   }
   state->x_dot = 0.0;
@@ -44,7 +44,7 @@ void moveTo( State *state, double x) {
 /**
  * Drives motor to desired speed given angular velocity.
  */
-void driveMotor( State *state, double phiDot ) 
+void driveMotor( State *state, double phiDot, double duration) 
 {
 
   //no movement check
@@ -52,11 +52,11 @@ void driveMotor( State *state, double phiDot )
     return;
   }
 
-  if (phiDot > 35) {
-    phiDot = 35;
+  if (phiDot > 40) {
+    phiDot = 40;
   }
-  if (phiDot < -35) {
-    phiDot = -35;
+  if (phiDot < -40) {
+    phiDot = -40;
   }
 
   if (abs(phiDot) < minPhiDot) {
@@ -89,7 +89,7 @@ void driveMotor( State *state, double phiDot )
 
   state->x_dot = dx / dt;
 
-  int nPulses = floor(tDrive / dt); 
+  int nPulses = floor(duration / dt); 
   
   for (int i=0; i<nPulses; i++) {
     digitalWrite(stepPin,HIGH); 
@@ -108,18 +108,38 @@ void driveMotor( State *state, double phiDot )
  */
 void acheiveAcc( State *state, double acc )
 {
-  double acc_t = millis();
-  double targetVelocity = state->x_dot + acc*(deltat + tDrive);
+  double duration = tDrive;//min(max(abs(acc)/100,0.01), 0.1);
+  //Serial.print("DURATION\n");
+  //Serial.print(duration);
+  //Serial.print("\n");
+  double targetVelocity = state->x_dot + acc*(deltat + duration);
+  //Serial.println(targetVelocity);
   double phi_dot = targetVelocity / gearRadius;
-  driveMotor(state, phi_dot);
-  Serial.print("ACCTIME\n");
-  double deltaTime = (millis() - acc_t) / 1000.0;
-  Serial.print(deltaTime);
-  Serial.print("\n");
+
+  driveMotor(state, phi_dot, duration);
 }
 
 double theta_distance(double theta, double target) {
-  return (fmod(theta,  (2*M_PI))) - target;
+  double diff = theta - target;
+  double phi = fmod(abs(diff), 2*M_PI);
+  
+  double distance;
+
+  if (phi > M_PI) {
+    distance = 2*M_PI - phi;
+  }
+  else {
+    distance = phi;
+  }
+
+  if (((diff <= 0) && (diff >= -M_PI)) || ((diff >= M_PI) && (diff <= 2*M_PI))) {
+    distance = -1*distance;
+  }
+  else {
+    distance = 1*distance;
+  }
+  
+  return distance;
 }
 
 /**

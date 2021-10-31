@@ -38,16 +38,17 @@ Simulation loop
 Choose action based on state,
 Completes action and returns new state
 """
+controller = EnergyShapingController()
 
 for _ in range(1000000):
     if state is None:
         action = env.action_space.sample()
     else:
-        state = state_modifier(state)
+        state = controller.state_estimate_callback(state)
 
-        if (abs(theta_distance(state[2],np.pi)) < 0.5):
+        if (abs(controller.theta_distance(state[2],np.pi)) < 0.4):
             if get_key_press() != .999:
-                action = upright_lqr(K,state)
+                action = controller.upright_lqr()
             else:
                 env.reset()
                 action = np.zeros((1,))
