@@ -26,12 +26,27 @@ class odriveControl():
         time.sleep(2)
 
     def torque(self, t, dur):
-        self.odrive_inst.axis0.controller.enable_current_mode_vel_limit = False
+        # self.odrive_inst.axis0.controller.enable_current_mode_vel_limit = False
         self.odrive_inst.axis0.controller.config.control_mode = CONTROL_MODE_TORQUE_CONTROL
         self.odrive_inst.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-        self.odrive_inst.axis0.controller.input_torque = t
+        # self.odrive_inst.axis0.controller.input_torque = t
+        self.odrive_inst.axis0.motor.current_control.Iq_setpoint = 0.8
+        print(self.odrive_inst.axis0.motor.current_control.Iq_setpoint)
+        print(self.odrive_inst.axis0.motor.current_control.Iq_measured)
         time.sleep(dur)
+        print(self.odrive_inst.axis0.motor.current_control.Iq_setpoint)
+        print(self.odrive_inst.axis0.motor.current_control.Iq_measured)
         self.odrive_inst.axis0.controller.input_torque = 0
+        self.odrive_inst.axis0.requested_state = AXIS_STATE_IDLE
+        time.sleep(1)
+
+    def velocity(self, v, dur):
+        # self.odrive_inst.axis0.controller.enable_current_mode_vel_limit = False
+        self.odrive_inst.axis0.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
+        self.odrive_inst.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+        self.odrive_inst.axis0.controller.input_vel = v
+        time.sleep(dur)
+        self.odrive_inst.axis0.controller.input_vel = 0
         self.odrive_inst.axis0.requested_state = AXIS_STATE_IDLE
         time.sleep(1)
 
