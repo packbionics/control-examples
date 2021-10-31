@@ -25,6 +25,9 @@ template<>        inline Print& operator <<(Print &obj, float arg) { obj.print(a
 // ODrive object
 ODriveArduino odrive(odrive_serial);
 
+// Torque Constant
+float kt = 0.0868; // for R80 KV110 Motor
+
 void setup() {
   // ODrive uses 115200 baud
   odrive_serial.begin(115200);
@@ -46,7 +49,14 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  odrive.SetCurrent(0, 0.2);
+  Serial.println("Setting Torque in CW Direction");
+  SetTorque(-.001);
+  delay(5000);
+  Serial.println("Setting Torque in CCW Direction");
+  SetTorque(.001);
+  delay(2000);
 }
 
-//void Set
+void SetTorque(float t) {
+  odrive.SetCurrent(0, t/kt);
+}
