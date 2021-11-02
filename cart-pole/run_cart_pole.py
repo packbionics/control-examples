@@ -2,7 +2,7 @@ from cart_pole_control import *
 
 import gym
 import numpy as np
-import matplotlib.pyplot as plt
+
 
 env = gym.make('gym_cart_pole:CartPoleSwingUpContinuous-v0')
 env.reset() 
@@ -32,11 +32,14 @@ for _ in range(100000):
     else:
         state = controller.state_estimate_callback(state)
 
-        if (abs(controller.theta_distance(state[2],math.pi)) < .6):
+        if (abs(controller.theta_distance(state[2],math.pi)) < .7):
             action = controller.upright_lqr()
         else:
-            action = controller.swingup()
-
+            try:
+                action = controller.swingup()
+            except ValueError:
+                break
+            
     for _ in range(1):
         env.render()
         state, reward, done, _ = env.step(action) 

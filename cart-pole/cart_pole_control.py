@@ -6,14 +6,21 @@ import numpy as np
 from gekko import GEKKO as gk
 
 p, = plt.plot([],[], 'r-')
+plt.title('MPC state trajectory')
+plt.xlabel('x position')
+plt.ylabel('theta')
 
 def update_line(new_data):
-    p.set_xdata(new_data[0])
-    p.set_ydata(new_data[1])
+    x_data = new_data[0]
+    y_data = new_data[1]
+
+    p.set_xdata(x_data)
+    p.set_ydata(y_data)
     plt.draw()
-    plt.ylim((-1,5))
-    plt.xlim((0,1))
+    plt.ylim((-5,5))
+    plt.xlim((-2,2))
     plt.pause(0.000001)
+
 
 class CartPoleSwingUpController:
 
@@ -82,6 +89,7 @@ class CartPoleSwingUpController:
         f = np.dot(k_lqr,X)
         return -f 
 
+
 class CartPoleMPCController(CartPoleSwingUpController):
 
     def __init__(self, gravity=9.81, 
@@ -95,10 +103,15 @@ class CartPoleMPCController(CartPoleSwingUpController):
                 mass_pole, 
                 length_pole,
                 k_lqr)
+
         self.m = gk(remote=False)
-        N = 15
+
+        N = 12
         T = 1
-        self.m.time = np.linspace(0,T,N)
+        self.m.time = np.linspace(0,T,N)**2
+        p = np.zeros(N)
+        p[-1] = T
+        final = self.m.Param(value=p)
 
         m1 = self.mass_cart
         m2 = self.mass_pole
@@ -110,10 +123,6 @@ class CartPoleMPCController(CartPoleSwingUpController):
         pos_lb = -1.0
         pos_ub = 1.0
         Fmx = 100.0
-
-        p = np.zeros(N)
-        p[-1] = T
-        final = self.m.Param(value=p)
 
         self.x = self.m.Array(self.m.Var,(4))
 
@@ -136,14 +145,15 @@ class CartPoleMPCController(CartPoleSwingUpController):
         #self.m.Equation((self.x[1]*final - x_f[1])**2 - 0.1 <= 0) 
 
         self.m.Minimize(self.m.integral(self.u**2))
-        #self.m.Minimize(1e5*(self.x[0]*final-x_f[0])**2*final)
-        self.m.Minimize(final*1e3*(self.x[1]-x_f[1])**2)
+        self.m.Minimize(1e2*(self.x[0]*final-x_f[0])**2*final)
+        self.m.Minimize(1e3*(self.x[1]-x_f[1])**2*final)
         #self.m.Minimize(1e5*(self.x[2]*final-x_f[2])**2*final)
         #self.m.Minimize(1e5*(self.x[3]*final-x_f[3])**2*final)
 
         self.m.options.IMODE = 6
 
         self.current_action = 0
+        self.fail_count = 0
 
     def swingup(self):
         try:
@@ -154,14 +164,19 @@ class CartPoleMPCController(CartPoleSwingUpController):
             self.m.solve()
         except:
             print('MPC fail')
+            self.fail_count += 1
+            if self.fail_count > 5:
+                raise ValueError('MPC failed to solve for trajectory.. falling back')
             return np.array([self.current_action])
 
-        update_line(np.array([self.m.time,self.x[1].value]))
+        self.fail_count = 0
+        update_line(np.array([self.x[0].value,self.x[1].value]))
 
         self.current_action = self.u.value[1]
         print(self.current_action)
         print(self.x[1].value[-1])
         return np.array([self.current_action])
+
 
 class CartPoleEnergyShapingController(CartPoleSwingUpController): 
 
