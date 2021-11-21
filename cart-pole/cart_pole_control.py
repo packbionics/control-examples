@@ -106,7 +106,7 @@ class CartPoleMPCController(CartPoleSwingUpController):
 
         self.m = gk(remote=False)
 
-        N = 12
+        N = 11
         T = 1
         self.m.time = np.linspace(0,T,N)**2
         p = np.zeros(N)
@@ -145,13 +145,13 @@ class CartPoleMPCController(CartPoleSwingUpController):
         #self.m.Equation((self.x[1]*final - x_f[1])**2 - 0.1 <= 0) 
 
         self.m.Minimize(self.m.integral(self.u**2))
-        self.m.Minimize(1e2*(self.x[0]*final-x_f[0])**2*final)
+        #self.m.Minimize(1*(self.x[0]*final-x_f[0])**2*final)
         self.m.Minimize(1e3*(self.x[1]-x_f[1])**2*final)
-        #self.m.Minimize(1e5*(self.x[2]*final-x_f[2])**2*final)
+        #self.m.Minimize(1*(self.x[2]*final-x_f[2])**2*final)
         #self.m.Minimize(1e5*(self.x[3]*final-x_f[3])**2*final)
 
         self.m.options.IMODE = 6
-
+        self.m.options.SOLVER = 3
         self.current_action = 0
         self.fail_count = 0
 
