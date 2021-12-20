@@ -10,6 +10,7 @@ import time
 import odrive
 import math
 from odrive.enums import *
+from odrive.utils import start_liveplotter
 #from odrive.pyfibre.fibre.protocol import ChannelBrokenException
 
 class R80MotorControl:
@@ -309,11 +310,14 @@ if __name__ == "__main__":
     print("Placing motor in close loop control. If you move motor, motor will "
           "resist you.")
     
-    r80_motor.set_tunable_params(45, 0.006, 0.01, 300, 1500)
+    r80_motor.set_tunable_params(45, 0.004, 0.01, 500, 1500)
     
     r80_motor.mode_close_loop_control()
     
-    test_selection = [1, 0, 0]
+    start_liveplotter(lambda: [r80_motor.odrive_axis.encoder.pos_estimate,
+                               r80_motor.odrive_axis.controller.input_pos])
+    
+    test_selection = [0, 1, 0]
 
     if test_selection[0] == 1:
         print("Position control")
@@ -329,7 +333,7 @@ if __name__ == "__main__":
             print("    Setting motor to {} degrees.".format(angle))
             r80_motor.move_input_pos(angle)
             time.sleep(0.1)
-        
+        """
         # Faceoff mode
         tp = 60/83.0
         time.sleep(1)
@@ -353,12 +357,12 @@ if __name__ == "__main__":
         time.sleep(tp)
         r80_motor.move_input_pos(1500)
         print("AND TAKE WHATS OURS")
-        time.sleep(tp)
+        time.sleep(tp)"""
     
     if test_selection[1] == 1:      
         print("Ramped position control")
         cmd_freq = 10 # Hz
-        r80_motor.odrive_axis.controller.config.input_filter_bandwidth = cmd_freq / 2
+        r80_motor.odrive_axis.controller.config.input_filter_bandwidth = cmd_freq * 3 
         r80_motor.odrive_axis.controller.config.input_mode = INPUT_MODE_POS_FILTER
 
         for i in range(0, 361*2, 10):
@@ -367,7 +371,8 @@ if __name__ == "__main__":
             r80_motor.move_input_pos(angle)
             time.sleep(1 / cmd_freq)
         r80_motor.odrive_axis.controller.config.input_mode = INPUT_MODE_PASSTHROUGH
-      
+        time.sleep(10)
+        
     if test_selection[2] == 1:      
         print("Velocity control..")
         r80_motor.odrive_axis.controller.config.control_mode = CONTROL_MODE_VELOCITY_CONTROL
