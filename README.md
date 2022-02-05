@@ -20,7 +20,7 @@ Three ways to achieve the task is available:
 1. Energy shaping: Use an "energy function" to guarantee convergence to fixed point
 1. Trajectory Optimization: Run optimization to find best trajectory wrt cost
 
-## ODrive
+## [ODrive](https://github.com/packbionics/control-examples/tree/main/odrive)
 ### Dependencies
 [ODriveTool](https://docs.odriverobotics.com/v/latest/getting-started.html#downloading-and-installing-odriveool)
 A script for ODrive motor calibration, plus position/velocity/torque control
@@ -32,5 +32,5 @@ A script for ODrive motor calibration, plus position/velocity/torque control
 ### Description
 Explore trajectory optimization for generating limit cycles in reduced-order models, with applications towards gait generation in prosthetic legs.
 
-### LIPM
-Walking reduced to a linear inverted pendulum. Direct collocation with hybrid dynamics.
+### [LIPM](https://github.com/packbionics/control-examples/tree/main/walker/lipm)
+Walking reduced to a linear inverted pendulum. Direct transciption with hybrid dynamics.
