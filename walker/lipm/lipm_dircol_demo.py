@@ -33,7 +33,7 @@ def pend_walker_dircol():
     dircol.AddConstraintToAllKnotPoints(-torque_limit <= u[0])
     dircol.AddConstraintToAllKnotPoints(u[0] <= torque_limit)
 
-    alpha = 20*np.pi/180
+    alpha = 10*np.pi/180
 
     # State constraints
     dircol.AddConstraintToAllKnotPoints(dircol.state()[0] >= np.pi-alpha)
@@ -46,7 +46,7 @@ def pend_walker_dircol():
 
     # Impact map, based on rimless wheel model
     prog.AddConstraint(dircol.initial_state()[1] == dircol.final_state()[1] *
-                        np.cos(2 * alpha))
+                        np.cos(2 * alpha))  
 
     # Cost on input effort
     R = 10
