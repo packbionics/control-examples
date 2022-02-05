@@ -23,7 +23,8 @@ Three ways to achieve the task is available:
 ## [ODrive](https://github.com/packbionics/control-examples/tree/main/odrive)
 ### Dependencies
 [ODriveTool](https://docs.odriverobotics.com/v/latest/getting-started.html#downloading-and-installing-odriveool)
-A script for ODrive motor calibration, plus position/velocity/torque control
+### Description
+Scripts for ODrive motor calibration, plus position/velocity/torque control
 
 ## Walker
 ### Dependencies
