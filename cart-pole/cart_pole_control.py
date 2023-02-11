@@ -64,9 +64,11 @@ class CartPoleSwingUpController:
         return state
 
     def get_action(self):
-        if (abs(self.theta_distance(self.state[2],math.pi)) < .3):
+
+        # choose LQR if close to the unstable fixed point
+        if (abs(self.theta_distance(self.state[2], 0)) < 0.7):
             return self.upright_lqr()
-        else:
+        else: # otherwise choose swingup control
             return self.swingup()
 
     def theta_distance(self, theta, target):
@@ -82,12 +84,6 @@ class CartPoleSwingUpController:
     
         k_lqr = self.k_lqr
 
-        x = self.state[0]
-        x_dot = self.state[1]
-        theta = self.state[2]
-        theta_dot = self.state[3]
-
-        theta_diff = self.theta_distance(theta,math.pi)
         X = self.state
         f = np.dot(k_lqr,X)
         return -f 
@@ -161,23 +157,21 @@ class CartPoleMPCController(CartPoleSwingUpController):
     def swingup(self):
         try:
             self.x[0].value = self.state[0]
-            self.x[1].value = self.state[2]
+            self.x[1].value = np.pi - self.state[2]
             self.x[2].value = self.state[1]
-            self.x[3].value = self.state[3]
-            self.m.solve()
+            self.x[3].value = -self.state[3]
+            self.m.solve(disp=False)
         except:
             print('MPC fail')
             self.fail_count += 1
             if self.fail_count > 5:
-                raise ValueError('MPC failed to solve for trajectory.. falling back')
+                raise RuntimeError('MPC failed to solve for trajectory.. falling back')
             return np.array([self.current_action])
 
         self.fail_count = 0
         update_line(np.array([self.x[0].value,self.x[1].value]))
 
         self.current_action = self.u.value[1]
-        print(self.current_action)
-        print(self.x[1].value[-1])
         return np.array([self.current_action])
 
 

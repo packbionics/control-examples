@@ -7,84 +7,86 @@ import numpy as np
 gym.envs.registration.register(
     id='gym_cart_pole:CartPoleSwingUpContinuous-v0',
     entry_point='gym_cart_pole.envs:CartPoleSwingUpEnv',
-    max_episode_steps=1000,
+    max_episode_steps=300,
 )
 
-env = gym.make('gym_cart_pole:CartPoleSwingUpContinuous-v0')
-env.reset() 
-action = None
-state = None
-t = 0
+# Constants to define the system
+GRAVITY = 9.81
+MASS_CART = 1
+MASS_POLE = 1
+LENGTH_POLE = 0.5
 
-swingup_mode = 0
-swingup_controller = None
 
-gravity = 9.81
-mass_cart = 1
-mass_pole = 1
-length_pole = 0.5
+def compute_optimal_gains():
+    gravity_per_length = GRAVITY / LENGTH_POLE
+    total_mass = MASS_CART + MASS_CART
 
-gravity_per_length = gravity / length_pole
-total_mass = mass_cart + mass_cart
+    x_3 = gravity_per_length / (4/3 - MASS_POLE / total_mass)
 
-x_3 = gravity_per_length / (4/3 - mass_pole / total_mass)
+    # Plant dynamics
+    A = np.array([
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, x_3, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+        [0.0, 0.0, x_3, 0.0]
+    ])
 
-A = np.array([
-    [0.0, 1.0, 0.0, 0.0],
-    [0.0, 0.0, x_3, 0.0],
-    [0.0, 0.0, 0.0, 1.0],
-    [0.0, 0.0, x_3, 0.0]
-])
+    # influence of control inputs
+    B = np.array([
+        [0.0],
+        [1 / total_mass],
+        [0.0],
+        [x_3 / -GRAVITY]
+    ])
 
-B = np.array([
-    [0.0],
-    [1 / total_mass],
-    [0.0],
-    [x_3 / -gravity]
-])
+    # cost of state
+    Q = 5 * np.eye(4)
+    # cost of inputs
+    R = np.eye(1)
 
-Q = 5 * np.eye(4)
+    # optimal gains based on given cost matrices Q and R
+    k_lqr, _, _ = control.lqr(A, B, Q, R)
+    k_lqr = np.array(k_lqr)
 
-R = np.eye(1)
+    return k_lqr
 
-k_lqr, _, _ = control.lqr(A, B, Q, R)
-print(k_lqr[0])
-k_lqr = np.array(k_lqr)
+def run_loop(env, state, controller):
+    """
+    Simulation loop
+    Choose action based on state,
+    Completes action
+    """
 
-if (swingup_mode == 0):
-    controller = CartPoleEnergyShapingController(gravity=gravity, mass_cart=mass_cart, mass_pole=mass_pole, length_pole=length_pole, k_lqr=k_lqr)
-else:
-    controller = CartPoleMPCController()
+    done = False
+    while not done:
 
-# LQR gains
-K = np.array([-3.16,54.04,-4.82,9.74])
-
-"""
-Simulation loop
-Choose action based on state,
-Completes action and returns new state
-"""
-for _ in range(100000):
-    if state is None:
-        action = env.action_space.sample()
-    else:
         state = controller.state_estimate_callback(state)
-
-        if (abs(controller.theta_distance(state[2],0)) < .7):
-            action = controller.upright_lqr()
-        else:
-            try:
-                action = controller.swingup()
-            except ValueError:
-                break
-            
-    for _ in range(1):
+        action = controller.get_action()
+                
+        state, _, done, _ = env.step(action) 
         env.render()
-        state, reward, done, _ = env.step(action) 
-        if done:
-            env.reset()
-            t = 0
-            action = np.zeros((1,))
-            break
-        t += 1
-env.close()
+
+def main():
+    env = gym.make('gym_cart_pole:CartPoleSwingUpContinuous-v0')
+    state = env.reset()
+
+    swingup_mode = 1
+    k_lqr = compute_optimal_gains()
+
+    if (swingup_mode == 0):
+        controller = CartPoleEnergyShapingController(gravity=GRAVITY, mass_cart=MASS_CART, mass_pole=MASS_POLE, length_pole=LENGTH_POLE, k_lqr=k_lqr)
+    else:
+        controller = CartPoleMPCController(gravity=GRAVITY, mass_cart=MASS_CART, mass_pole=MASS_POLE, length_pole=LENGTH_POLE, k_lqr=k_lqr)
+
+    # number of episodes
+    for i in range(100):
+        try:
+            run_loop(env, state=state, controller=controller)
+            print('Finishing episode: %d' % (i + 1))
+        except RuntimeError as exc:
+            print(exc)
+        state = env.reset()
+    env.close()
+
+if __name__ == '__main__':
+    main()
