@@ -45,6 +45,9 @@ class CartPoleSwingUpController:
         """
         return (state[0], state[1], np.pi-state[2], -state[3])
 
+    def state_unpacker(self, state):
+        return (state[0], state[1], state[2], state[3])
+
     def unpack_parameters(self):
         return (self.gravity,
                 self.mass_pole,
@@ -53,7 +56,7 @@ class CartPoleSwingUpController:
                 self.k_lqr)
 
     def state_estimate_callback(self, state):
-        state = self.state_modifier(state)
+        state = self.state_unpacker(state)
         self.state[0] = state[0]
         self.state[1] = state[1]
         self.state[2] = state[2]        
@@ -85,7 +88,7 @@ class CartPoleSwingUpController:
         theta_dot = self.state[3]
 
         theta_diff = self.theta_distance(theta,math.pi)
-        X = np.array([x, theta_diff, x_dot, theta_dot])
+        X = self.state
         f = np.dot(k_lqr,X)
         return -f 
 
@@ -214,8 +217,8 @@ class CartPoleEnergyShapingController(CartPoleSwingUpController):
             k_e,
             k_x) = self.unpack_parameters()
 
-        theta = self.state[2]
-        theta_dot = self.state[3]
+        theta = np.pi - self.state[2]
+        theta_dot = -self.state[3]
 
         U = -mass_pole * gravity * length_pole * math.cos(theta)
         E = 0.5 * (mass_pole * (length_pole ** 2)) * theta_dot ** 2 + U
@@ -239,8 +242,8 @@ class CartPoleEnergyShapingController(CartPoleSwingUpController):
 
         x = self.state[0]
         x_dot = self.state[1]
-        theta = self.state[2]
-        theta_dot = self.state[3]
+        theta = np.pi - self.state[2]
+        theta_dot = -self.state[3]
 
         c = math.cos(theta)
         s = math.sin(theta)
