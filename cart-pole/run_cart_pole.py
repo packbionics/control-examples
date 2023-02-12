@@ -7,7 +7,7 @@ import numpy as np
 gym.envs.registration.register(
     id='gym_cart_pole:CartPoleSwingUpContinuous-v0',
     entry_point='gym_cart_pole.envs:CartPoleSwingUpEnv',
-    max_episode_steps=300,
+    max_episode_steps=1000,
 )
 
 # Constants to define the system
@@ -61,9 +61,14 @@ def run_loop(env, state, controller):
     while not done:
 
         state = controller.state_estimate_callback(state)
-        action = controller.get_action()
-                
-        state, _, done, _ = env.step(action) 
+
+        try:
+            action = controller.get_action()        
+            state, _, done, _ = env.step(action)
+        except RuntimeError as ex:
+            state, _, done, _ = env.step(env.action_space.sample())
+            print(repr(ex))
+
         env.render()
 
 def main():
@@ -80,11 +85,9 @@ def main():
 
     # number of episodes
     for i in range(100):
-        try:
-            run_loop(env, state=state, controller=controller)
-            print('Finishing episode: %d' % (i + 1))
-        except RuntimeError as exc:
-            print(exc)
+        run_loop(env, state=state, controller=controller)
+
+        print('Finishing episode: %d' % (i + 1))
         state = env.reset()
     env.close()
 

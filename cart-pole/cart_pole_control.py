@@ -105,7 +105,7 @@ class CartPoleMPCController(CartPoleSwingUpController):
 
         self.m = gk(remote=False)
 
-        N = 11
+        N = 8
         T = 1
         self.m.time = np.linspace(0,T,N)**2
         p = np.zeros(N)
@@ -141,13 +141,8 @@ class CartPoleMPCController(CartPoleSwingUpController):
         self.m.Equation(self.x[3].dt() == -((l*m2*self.m.cos(self.x[1])*self.m.sin(self.x[1])*self.x[3]**2+self.u*self.m.cos(self.x[1])+(m1+m2)*g*self.m.sin(self.x[1])) /
                                 (l*m1+l*m2*(1-self.m.cos(self.x[1])**2))))
 
-        #self.m.Equation((self.x[1]*final - x_f[1])**2 - 0.1 <= 0) 
-
         self.m.Minimize(self.m.integral(self.u**2))
-        #self.m.Minimize(1*(self.x[0]*final-x_f[0])**2*final)
         self.m.Minimize(1e3*(self.x[1]-x_f[1])**2*final)
-        #self.m.Minimize(1*(self.x[2]*final-x_f[2])**2*final)
-        #self.m.Minimize(1e5*(self.x[3]*final-x_f[3])**2*final)
 
         self.m.options.IMODE = 6
         self.m.options.SOLVER = 3
@@ -164,7 +159,7 @@ class CartPoleMPCController(CartPoleSwingUpController):
         except:
             print('MPC fail')
             self.fail_count += 1
-            if self.fail_count > 5:
+            if self.fail_count > 10:
                 raise RuntimeError('MPC failed to solve for trajectory.. falling back')
             return np.array([self.current_action])
 
