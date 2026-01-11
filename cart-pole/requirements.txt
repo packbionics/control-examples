@@ -2,7 +2,7 @@ cloudpickle==3.0.0
 contourpy==1.1.1
 control==0.9.4
 cycler==0.12.1
-fonttools==4.53.1
+fonttools==4.61.0
 gekko==1.2.1
 gym==0.23.1
 gym-notices==0.0.8
